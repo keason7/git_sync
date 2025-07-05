@@ -18,7 +18,7 @@ jobs:
           auto-update-conda: true
           python-version: 3.12.11
           environment-file: environment.yml
-          activate-environment: mediaz
+          activate-environment: gitsync
           auto-activate-base: false
 
       - name: Install code checks
