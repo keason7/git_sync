@@ -1,0 +1,8 @@
+credentials:
+  username: "my_git_username"
+  repo: "my_git_repo"
+  method: "ssh"
+  # specify for https login
+  github_token: null
+
+path_install: "~/.gitsync/"
