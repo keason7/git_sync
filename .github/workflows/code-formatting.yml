@@ -16,7 +16,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
-          python-version: 3.12.11
+          python-version: 3.13.5
           environment-file: environment.yml
           activate-environment: gitsync
           auto-activate-base: false
