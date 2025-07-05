@@ -1,0 +1,9 @@
+name: gitsync
+channels:
+  - default
+dependencies:
+  - pip==25.1
+  - python==3.13.5
+  - pyyaml==6.0.2
+  - pip:
+      - GitPython==3.1.44
