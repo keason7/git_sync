@@ -1,6 +1,9 @@
+import random
 from pathlib import Path
 
 from git import Repo
+
+from src.utils import read_yml, write_yml
 
 
 class GitDb:
@@ -15,6 +18,11 @@ class GitDb:
         self.path_repo_local = self.path_install / self.credentials["repo"]
 
         self.__clone()
+
+        self.path_data = (self.path_repo_local / "./data/").resolve()
+        self.path_data.mkdir(mode=0o777, parents=False, exist_ok=True)
+
+        self.__init_links(config["paths_sync"])
 
     def __get_uri(self):
         valid_methods = ["ssh", "https"]
@@ -36,3 +44,23 @@ class GitDb:
             self.repo = Repo.clone_from(self.path_repo_remote, self.path_repo_local)
         else:
             self.repo = Repo(self.path_repo_local)
+
+    def __init_links(self, paths_sync):
+        self.path_links = (self.path_repo_local / "links.yml").resolve()
+
+        if not self.path_links.exists():
+            self.links = {}
+
+        else:
+            self.links = read_yml(self.path_links)
+
+        for path in paths_sync:
+            path_to_sync = Path(path).expanduser().resolve()
+
+            if str(path_to_sync) not in self.links.keys():
+                path_synced = self.path_data / str(random.getrandbits(128))
+                path_synced.mkdir(mode=0o777, parents=False, exist_ok=True)
+
+                self.links[str(path_to_sync)] = str(path_synced)
+
+        write_yml(self.path_links, self.links)

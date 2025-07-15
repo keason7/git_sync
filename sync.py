@@ -7,7 +7,7 @@ def main():
     config = read_yml("./.config.yml")
     git_db = GitDb(config)
 
-    create_backup(config["paths_sync"], git_db.path_repo_local)
+    create_backup(git_db)
 
 
 if __name__ == "__main__":
