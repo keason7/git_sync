@@ -1,6 +1,6 @@
 credentials:
-  username: "my_git_username"
-  repo: "my_git_repo"
+  username: "user_name"
+  repo: "repository_name"
   method: "ssh"
   github_token: null
 
