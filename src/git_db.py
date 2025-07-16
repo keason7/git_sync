@@ -60,9 +60,7 @@ class GitDb:
             path_to_sync = Path(path).expanduser().resolve()
 
             if str(path_to_sync) not in self.links.keys():
-                path_synced = self.path_data / str(random.getrandbits(128))
-                path_synced.mkdir(mode=0o777, parents=False, exist_ok=True)
-
+                path_synced = self.path_data / f"{path_to_sync.stem}_{str(random.getrandbits(64))}"
                 self.links[str(path_to_sync)] = str(path_synced)
 
         write_yml(self.path_links, self.links)
