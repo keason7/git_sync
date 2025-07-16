@@ -44,6 +44,10 @@ Run sync.
 python sync.py
 ```
 
+```bash
+python sync.py -pc /path/to/config/file.yml
+```
+
 Files and folders in `paths_sync` will be copied to a locally installed data private repository. Any change in source data (remove file, new file, modified file, ...) will be synced to target remote data repository.
 
 ## Labels
