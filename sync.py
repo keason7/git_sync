@@ -7,7 +7,9 @@ def main():
     config = read_yml("./.config.yml")
     git_db = GitDb(config)
 
-    create_backup(git_db)
+    create_backup(git_db, verbose=False)
+
+    git_db.sync()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import random
+from datetime import datetime
 from pathlib import Path
 
 from git import Repo
@@ -22,6 +23,7 @@ class GitDb:
         self.path_data = (self.path_repo_local / "./data/").resolve()
         self.path_data.mkdir(mode=0o777, parents=False, exist_ok=True)
 
+        self.__reset_unpushed_commits()
         self.__init_links(config["paths_sync"])
 
     def __get_uri(self):
@@ -64,3 +66,28 @@ class GitDb:
                 self.links[str(path_to_sync)] = str(path_synced)
 
         write_yml(self.path_links, self.links)
+
+    def __reset_unpushed_commits(self):
+        self.repo.git.reset("--hard", f"origin/{self.repo.active_branch.name}")
+
+    def __add_untracked(self):
+        self.repo.index.add(self.repo.untracked_files)
+
+    def __add_tracked(self):
+        self.repo.git.add(update=True)
+
+    def __commit(self, msg):
+        self.repo.index.commit(msg)
+
+    def __push(self):
+        self.repo.remotes.origin.push()
+
+    def sync(self):
+        self.__add_untracked()
+        self.__add_tracked()
+
+        if self.repo.is_dirty(index=True, untracked_files=True):
+            now = datetime.now()
+            msg = f"[{now.strftime("%Y-%m-%d %H:%M:%S")}] Automatic commit: Update gitdata."
+            self.__commit(msg)
+            self.__push()
