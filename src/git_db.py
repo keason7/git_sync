@@ -97,13 +97,12 @@ class GitDb:
                 diff_categories[tag_key] = True
 
         diff_categories = [category for category, is_used in diff_categories.items() if is_used]
-
-        return diff_categories
+        return " ".join(diff_categories)
 
     def __add_categories(self, categories):
         latest_hash = self.repo.head.commit.hexsha
 
-        self.repo.git.notes("add", "-f", "-m", " ".join(categories), latest_hash)
+        self.repo.git.notes("add", "-f", "-m", categories, latest_hash)
         self.repo.git.push("origin", "refs/notes/commits")
 
     def __commit(self, msg):
@@ -119,7 +118,7 @@ class GitDb:
 
         if self.repo.is_dirty(index=True, untracked_files=True):
             now = datetime.now()
-            msg = f"[{now.strftime("%Y-%m-%d %H:%M:%S")}] Automatic commit: Update gitdata."
+            msg = f"[{now.strftime("%Y-%m-%d %H:%M:%S")}] - Automatic commit: [{categories}] files."
             self.__commit(msg)
             self.__push()
 
