@@ -27,7 +27,7 @@ if __name__ == "__main__":
         "-pc",
         "--path_config",
         type=str,
-        default="./.config.yml",
+        default="./config.yml",
         help="Path of config file.",
     )
 

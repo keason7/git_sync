@@ -139,6 +139,9 @@ class GitDb:
         """
         latest_hash = self.repo.head.commit.hexsha
 
+        # fetch remote notes first
+        self.repo.git.fetch("origin", "refs/notes/*:refs/notes/*")
+
         self.repo.git.notes("add", "-f", "-m", categories, latest_hash)
         self.repo.git.push("origin", "refs/notes/commits")
 
