@@ -20,6 +20,17 @@ class GitDb:
 
         self.__clone()
 
+        # for some reason Added and Deleted are inverted in GitPython
+        # D is for added files
+        # A is for deleted files
+        self.categories = {
+            "Added": "D",
+            "Deleted": "A",
+            "Renamed": "R",
+            "Modified": "M",
+            "TypeChanged": "T",
+        }
+
         self.path_data = (self.path_repo_local / "./data/").resolve()
         self.path_data.mkdir(mode=0o777, parents=False, exist_ok=True)
 
@@ -47,6 +58,9 @@ class GitDb:
         else:
             self.repo = Repo(self.path_repo_local)
 
+    def __reset_unpushed_commits(self):
+        self.repo.git.reset("--hard", f"origin/{self.repo.active_branch.name}")
+
     def __init_links(self, paths_sync):
         self.path_links = (self.path_repo_local / "links.yml").resolve()
 
@@ -65,14 +79,32 @@ class GitDb:
 
         write_yml(self.path_links, self.links)
 
-    def __reset_unpushed_commits(self):
-        self.repo.git.reset("--hard", f"origin/{self.repo.active_branch.name}")
-
     def __add_untracked(self):
         self.repo.index.add(self.repo.untracked_files)
 
     def __add_tracked(self):
         self.repo.git.add(update=True)
+
+    def __get_categories(self):
+        diff_categories = {k: False for k in self.categories}
+
+        diff_staged = self.repo.index.diff("HEAD")
+
+        for tag_key, tag_value in self.categories.items():
+            staged_files = diff_staged.iter_change_type(tag_value)
+
+            if len(list(staged_files)) > 0:
+                diff_categories[tag_key] = True
+
+        diff_categories = [category for category, is_used in diff_categories.items() if is_used]
+
+        return diff_categories
+
+    def __add_categories(self, categories):
+        latest_hash = self.repo.head.commit.hexsha
+
+        self.repo.git.notes("add", "-f", "-m", " ".join(categories), latest_hash)
+        self.repo.git.push("origin", "refs/notes/commits")
 
     def __commit(self, msg):
         self.repo.index.commit(msg)
@@ -83,9 +115,12 @@ class GitDb:
     def sync(self):
         self.__add_untracked()
         self.__add_tracked()
+        categories = self.__get_categories()
 
         if self.repo.is_dirty(index=True, untracked_files=True):
             now = datetime.now()
             msg = f"[{now.strftime("%Y-%m-%d %H:%M:%S")}] Automatic commit: Update gitdata."
             self.__commit(msg)
             self.__push()
+
+            self.__add_categories(categories)
