@@ -2,6 +2,7 @@
 
 import random
 from datetime import datetime
+from hashlib import sha256
 from pathlib import Path
 
 from git import Repo
@@ -24,8 +25,10 @@ class GitDb:
         self.path_install = Path(config["path_install"]).expanduser()
         self.path_install.mkdir(mode=0o777, parents=False, exist_ok=True)
 
+        repo_hash = sha256(f"{self.credentials["username"]}_{self.credentials["repo"]}".encode("utf-8")).hexdigest()
+
         self.path_repo_remote = self.__get_uri()
-        self.path_repo_local = self.path_install / self.credentials["repo"]
+        self.path_repo_local = self.path_install / repo_hash / self.credentials["repo"]
 
         self.__clone()
 
