@@ -47,7 +47,7 @@ class GitDb:
         machine_id = get_hashed_machine_id()
 
         self.path_data = (self.path_repo_local / f"./data/{machine_id}").resolve()
-        self.path_data.mkdir(mode=0o777, parents=False, exist_ok=True)
+        self.path_data.mkdir(mode=0o777, parents=True, exist_ok=True)
 
         self.__reset_unpushed_commits()
         self.__init_links(config["paths_sync"])
@@ -92,7 +92,7 @@ class GitDb:
         Args:
             paths_sync (list): List of paths to sync.
         """
-        self.path_links = (self.path_repo_local / "links.yml").resolve()
+        self.path_links = (self.path_data / "links.yml").resolve()
 
         if not self.path_links.exists():
             self.links = {}
@@ -106,8 +106,6 @@ class GitDb:
             if str(path_to_sync) not in self.links.keys():
                 path_synced = self.path_data / f"{path_to_sync.stem}_{str(random.getrandbits(64))}"
                 self.links[str(path_to_sync)] = str(path_synced)
-
-        write_yml(self.path_links, self.links)
 
     def __add_untracked(self):
         """Add untracked files to index."""
@@ -165,6 +163,7 @@ class GitDb:
 
     def sync(self):
         """Synchronize paths to sync with remote data directory."""
+        write_yml(self.path_links, self.links)
         self.__add_untracked()
         self.__add_tracked()
         categories = self.__get_categories()
