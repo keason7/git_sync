@@ -50,6 +50,41 @@ python sync.py -pc /path/to/config/file.yml
 
 Files and folders in `paths_sync` will be copied to a locally installed data private repository. Any change in source data (remove file, new file, modified file, ...) will be synced to target remote data repository.
 
+## Automatic sync
+
+To automatically sync data, cron jobs can be used.
+
+Create user logs directory.
+
+```bash
+mkdir -p ~/.logs/gitsync/
+```
+
+List active jobs of a given user.
+
+```bash
+crontab -u username -l
+```
+
+Check conda env python path.
+
+```bash
+conda activate gitsync
+which python
+```
+
+Edit cron jobs of a given user.
+
+```bash
+crontab -u username -e
+```
+
+Add cron entry.
+
+```bash
+* * * * * /path/to/conda/env/python /path/to/sync.py >> ~/.logs/gitsync/gitsync.log 2>&1
+```
+
 ## Labels
 
 Each commit has label(s) in the commit message and its git notes. Users can use CLI to retrieve particular commits with specific categories.
