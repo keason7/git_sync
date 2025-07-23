@@ -38,6 +38,8 @@ paths_sync:
   - /path/to/file/to/sync
 ```
 
+Note: Use https protocol on another git account that store the data repository to avoid unwanted automatic commits in contribution graph (if private contributions are set to visible).
+
 Run sync.
 
 ```bash
