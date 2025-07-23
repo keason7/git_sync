@@ -7,7 +7,7 @@ from pathlib import Path
 
 from git import Repo
 
-from src.utils import read_yml, write_yml
+from src.utils import get_hashed_machine_id, read_yml, write_yml
 
 
 class GitDb:
@@ -43,7 +43,10 @@ class GitDb:
             "TypeChanged": "T",
         }
 
-        self.path_data = (self.path_repo_local / "./data/").resolve()
+        # create a specific folder for each machine that is synced
+        machine_id = get_hashed_machine_id()
+
+        self.path_data = (self.path_repo_local / f"./data/{machine_id}").resolve()
         self.path_data.mkdir(mode=0o777, parents=False, exist_ok=True)
 
         self.__reset_unpushed_commits()
