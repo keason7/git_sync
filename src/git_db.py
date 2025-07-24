@@ -51,6 +51,7 @@ class GitDb:
 
         self.__reset_unpushed_commits()
         self.__init_links(config["paths_sync"])
+        self.__prepare_commit()
 
     def __get_uri(self):
         """Get remote git adress.
@@ -107,6 +108,11 @@ class GitDb:
                 path_synced = self.path_data / f"{path_to_sync.stem}_{str(random.getrandbits(64))}"
                 self.links[str(path_to_sync)] = str(path_synced)
 
+    def __prepare_commit(self):
+        """Pull changes before commit."""
+        self.repo.git.fetch()
+        self.repo.git.rebase(f"origin/{self.repo.active_branch.name}")
+
     def __add_untracked(self):
         """Add untracked files to index."""
         self.repo.index.add(self.repo.untracked_files)
@@ -114,11 +120,6 @@ class GitDb:
     def __add_tracked(self):
         """Add tracked files to index."""
         self.repo.git.add(update=True)
-
-    def __prepare_commit(self):
-        """Pull changes before commit."""
-        self.repo.git.fetch()
-        self.repo.git.rebase(f"origin/{self.repo.active_branch.name}")
 
     def __get_categories(self):
         """Get all changes types in staged diff to create category labels for current commit (Added, Modified, ...).
@@ -171,7 +172,6 @@ class GitDb:
         write_yml(self.path_links, self.links)
         self.__add_untracked()
         self.__add_tracked()
-        self.__prepare_commit()
         categories = self.__get_categories()
 
         # check if there are staged files in index
