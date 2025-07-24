@@ -6,6 +6,7 @@ from hashlib import sha256
 from pathlib import Path
 
 from git import Repo
+from git.exc import GitCommandError
 
 from src.utils import get_hashed_machine_id, read_yml, write_yml
 
@@ -43,6 +44,8 @@ class GitDb:
             "TypeChanged": "T",
         }
 
+        self.__reset_unpushed_commits()
+
         # create a specific branch for each machine that is synced
         self.is_new_branch = False
         machine_id = get_hashed_machine_id()
@@ -51,7 +54,6 @@ class GitDb:
         self.path_data = (self.path_repo_local / "./data/").resolve()
         self.path_data.mkdir(mode=0o777, parents=True, exist_ok=True)
 
-        self.__reset_unpushed_commits()
         self.__init_links(config["paths_sync"])
         self.__prepare_commit()
 
@@ -93,7 +95,10 @@ class GitDb:
         """
         self.branch = f"machine-{machine_id}"
 
-        if self.branch not in self.repo.branches:
+        remote_branch = f"origin/{self.branch}"
+        remote_branches = [ref.name for ref in self.repo.remotes.origin.refs]
+
+        if remote_branch not in remote_branches:
             self.repo.git.checkout("-b", self.branch)
             self.is_new_branch = True
         else:
@@ -101,11 +106,10 @@ class GitDb:
 
     def __reset_unpushed_commits(self):
         """Reset local unpushed commits."""
-        if not self.is_new_branch:
-            self.repo.git.reset("--hard", f"origin/{self.repo.active_branch.name}")
+        self.repo.git.reset("--hard", f"origin/{self.repo.active_branch.name}")
 
     def __init_links(self, paths_sync):
-        """Initialize links dict to match paths in config to there location in ./data/.
+        """Initialize links dict to match paths in config to their location in ./data/.
 
         Args:
             paths_sync (list): List of paths to sync.
@@ -126,10 +130,17 @@ class GitDb:
                 self.links[str(path_to_sync)] = str(path_synced)
 
     def __prepare_commit(self):
-        """Pull changes before commit."""
+        """Pull changes before commit.
+
+        Raises:
+            InterruptedError: Git pull failed.
+        """
         if not self.is_new_branch:
-            self.repo.git.fetch()
-            self.repo.git.rebase(f"origin/{self.repo.active_branch.name}")
+            try:
+                self.repo.remotes.origin.fetch()
+                self.repo.git.merge(f"origin/{self.repo.active_branch.name}")
+            except GitCommandError as e:
+                raise GitCommandError(f"Git pull failed: {e}")
 
     def __add_untracked(self):
         """Add untracked files to index."""
