@@ -2,11 +2,13 @@
 
 import random
 from datetime import datetime
+from hashlib import sha256
 from pathlib import Path
 
 from git import Repo
+from git.exc import GitCommandError
 
-from src.utils import read_yml, write_yml
+from src.utils import get_hashed_machine_id, read_yml, write_yml
 
 
 class GitDb:
@@ -24,8 +26,10 @@ class GitDb:
         self.path_install = Path(config["path_install"]).expanduser()
         self.path_install.mkdir(mode=0o777, parents=False, exist_ok=True)
 
+        repo_hash = sha256(f"{self.credentials["username"]}_{self.credentials["repo"]}".encode("utf-8")).hexdigest()
+
         self.path_repo_remote = self.__get_uri()
-        self.path_repo_local = self.path_install / self.credentials["repo"]
+        self.path_repo_local = self.path_install / repo_hash / self.credentials["repo"]
 
         self.__clone()
 
@@ -40,11 +44,18 @@ class GitDb:
             "TypeChanged": "T",
         }
 
-        self.path_data = (self.path_repo_local / "./data/").resolve()
-        self.path_data.mkdir(mode=0o777, parents=False, exist_ok=True)
-
         self.__reset_unpushed_commits()
+
+        # create a specific branch for each machine that is synced
+        self.is_new_branch = False
+        machine_id = get_hashed_machine_id()
+        self.__set_machine_branch(machine_id)
+
+        self.path_data = (self.path_repo_local / "./data/").resolve()
+        self.path_data.mkdir(mode=0o777, parents=True, exist_ok=True)
+
         self.__init_links(config["paths_sync"])
+        self.__prepare_commit()
 
     def __get_uri(self):
         """Get remote git adress.
@@ -76,17 +87,34 @@ class GitDb:
         else:
             self.repo = Repo(self.path_repo_local)
 
+    def __set_machine_branch(self, machine_id):
+        """Create a new branch or set existing one based on machine id.
+
+        Args:
+            machine_id (str): Hashed machine id.
+        """
+        self.branch = f"machine-{machine_id}"
+
+        remote_branch = f"origin/{self.branch}"
+        remote_branches = [ref.name for ref in self.repo.remotes.origin.refs]
+
+        if remote_branch not in remote_branches:
+            self.repo.git.checkout("-b", self.branch)
+            self.is_new_branch = True
+        else:
+            self.repo.git.checkout(self.branch)
+
     def __reset_unpushed_commits(self):
         """Reset local unpushed commits."""
         self.repo.git.reset("--hard", f"origin/{self.repo.active_branch.name}")
 
     def __init_links(self, paths_sync):
-        """Initialize links dict to match paths in config to there location in ./data/.
+        """Initialize links dict to match paths in config to their location in ./data/.
 
         Args:
             paths_sync (list): List of paths to sync.
         """
-        self.path_links = (self.path_repo_local / "links.yml").resolve()
+        self.path_links = (self.path_data / "links.yml").resolve()
 
         if not self.path_links.exists():
             self.links = {}
@@ -101,7 +129,18 @@ class GitDb:
                 path_synced = self.path_data / f"{path_to_sync.stem}_{str(random.getrandbits(64))}"
                 self.links[str(path_to_sync)] = str(path_synced)
 
-        write_yml(self.path_links, self.links)
+    def __prepare_commit(self):
+        """Pull changes before commit.
+
+        Raises:
+            InterruptedError: Git pull failed.
+        """
+        if not self.is_new_branch:
+            try:
+                self.repo.remotes.origin.fetch()
+                self.repo.git.merge(f"origin/{self.repo.active_branch.name}")
+            except GitCommandError as e:
+                raise GitCommandError(f"Git pull failed: {e}")
 
     def __add_untracked(self):
         """Add untracked files to index."""
@@ -128,7 +167,7 @@ class GitDb:
 
         diff_categories = [category for category, is_used in diff_categories.items() if is_used]
 
-        # Return categories string such as "Added Modified"
+        # return categories string such as "Added Modified"
         return " ".join(diff_categories)
 
     def __add_categories(self, categories):
@@ -155,10 +194,14 @@ class GitDb:
 
     def __push(self):
         """Push commit."""
-        self.repo.remotes.origin.push()
+        if self.is_new_branch:
+            self.repo.git.push("--set-upstream", "origin", self.branch)
+        else:
+            self.repo.remotes.origin.push()
 
     def sync(self):
         """Synchronize paths to sync with remote data directory."""
+        write_yml(self.path_links, self.links)
         self.__add_untracked()
         self.__add_tracked()
         categories = self.__get_categories()

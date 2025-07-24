@@ -2,6 +2,7 @@
 
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
 
 
@@ -67,7 +68,8 @@ def create_backup(db, verbose=False):
         verbose (bool, optional): Catch rsync terminal output. Defaults to False.
     """
     # create a temprary directory in repository
-    path_index = (db.path_repo_local / "./.tmp/").resolve()
+    tmp_folder = f".tmp_{uuid.uuid4().hex[:8]}"
+    path_index = (db.path_repo_local / tmp_folder).resolve()
     path_index.mkdir(mode=0o777, parents=False, exist_ok=True)
 
     # iterate over paths to sync and associated paths in data directory
