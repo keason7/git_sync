@@ -43,10 +43,12 @@ class GitDb:
             "TypeChanged": "T",
         }
 
-        # create a specific folder for each machine that is synced
+        # create a specific branch for each machine that is synced
+        self.is_new_branch = False
         machine_id = get_hashed_machine_id()
+        self.__set_machine_branch(machine_id)
 
-        self.path_data = (self.path_repo_local / f"./data/{machine_id}").resolve()
+        self.path_data = (self.path_repo_local / "./data/").resolve()
         self.path_data.mkdir(mode=0o777, parents=True, exist_ok=True)
 
         self.__reset_unpushed_commits()
@@ -83,9 +85,24 @@ class GitDb:
         else:
             self.repo = Repo(self.path_repo_local)
 
+    def __set_machine_branch(self, machine_id):
+        """Create a new branch or set existing one based on machine id.
+
+        Args:
+            machine_id (str): Hashed machine id.
+        """
+        self.branch = f"machine-{machine_id}"
+
+        if self.branch not in self.repo.branches:
+            self.repo.git.checkout("-b", self.branch)
+            self.is_new_branch = True
+        else:
+            self.repo.git.checkout(self.branch)
+
     def __reset_unpushed_commits(self):
         """Reset local unpushed commits."""
-        self.repo.git.reset("--hard", f"origin/{self.repo.active_branch.name}")
+        if not self.is_new_branch:
+            self.repo.git.reset("--hard", f"origin/{self.repo.active_branch.name}")
 
     def __init_links(self, paths_sync):
         """Initialize links dict to match paths in config to there location in ./data/.
@@ -110,8 +127,9 @@ class GitDb:
 
     def __prepare_commit(self):
         """Pull changes before commit."""
-        self.repo.git.fetch()
-        self.repo.git.rebase(f"origin/{self.repo.active_branch.name}")
+        if not self.is_new_branch:
+            self.repo.git.fetch()
+            self.repo.git.rebase(f"origin/{self.repo.active_branch.name}")
 
     def __add_untracked(self):
         """Add untracked files to index."""
@@ -165,7 +183,10 @@ class GitDb:
 
     def __push(self):
         """Push commit."""
-        self.repo.remotes.origin.push()
+        if self.is_new_branch:
+            self.repo.git.push("--set-upstream", "origin", self.branch)
+        else:
+            self.repo.remotes.origin.push()
 
     def sync(self):
         """Synchronize paths to sync with remote data directory."""
