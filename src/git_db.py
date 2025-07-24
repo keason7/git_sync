@@ -115,6 +115,11 @@ class GitDb:
         """Add tracked files to index."""
         self.repo.git.add(update=True)
 
+    def __prepare_commit(self):
+        """Pull changes before commit."""
+        self.repo.git.fetch()
+        self.repo.git.rebase(f"origin/{self.repo.active_branch.name}")
+
     def __get_categories(self):
         """Get all changes types in staged diff to create category labels for current commit (Added, Modified, ...).
 
@@ -132,7 +137,7 @@ class GitDb:
 
         diff_categories = [category for category, is_used in diff_categories.items() if is_used]
 
-        # Return categories string such as "Added Modified"
+        # return categories string such as "Added Modified"
         return " ".join(diff_categories)
 
     def __add_categories(self, categories):
@@ -166,6 +171,7 @@ class GitDb:
         write_yml(self.path_links, self.links)
         self.__add_untracked()
         self.__add_tracked()
+        self.__prepare_commit()
         categories = self.__get_categories()
 
         # check if there are staged files in index
