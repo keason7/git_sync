@@ -81,10 +81,14 @@ Edit cron jobs of a given user.
 crontab -u username -e
 ```
 
-Add cron entry.
+Add cron entry. To log every hour on multiple machines, use a random minute to make sure machines do not commit at the exact same time.
 
 ```bash
+# log every minute
 * * * * * /path/to/conda/env/python /path/to/sync.py >> ~/.logs/gitsync/gitsync.log 2>&1
+
+# log every hour at minute 41
+41 * * * * /path/to/conda/env/python /path/to/sync.py >> ~/.logs/gitsync/gitsync.log 2>&1
 ```
 
 ## Labels
